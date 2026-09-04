@@ -1,0 +1,49 @@
+# ==============================================================================
+# Production Dockerfile for High-Concurrency Piper TTS (CUDA / GPU Accelerated)
+# ==============================================================================
+FROM nvidia/cuda:12.2.2-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV WORKERS=4
+ENV PORT=5000
+ENV HOST=0.0.0.0
+ENV USE_CUDA=true
+ENV VOICE_MODELS="hi_IN-rohan-medium,en_US-lessac-medium,ml_IN-meera-medium,te_IN-padmavathi-medium"
+
+WORKDIR /app
+
+# Install system dependencies & Python 3.11
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-dev \
+    git \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip3 install --no-cache-dir --upgrade pip
+
+# Copy project files
+COPY requirements-prod.txt /app/
+RUN pip3 install --no-cache-dir -r requirements-prod.txt
+
+COPY . /app/
+
+# Make startup scripts executable
+RUN chmod +x /app/runpod_start.sh
+
+# Pre-download the default 4 voices during build to minimize pod start time
+RUN python3 -m piper.download_voices --data-dir /app hi_IN-rohan-medium && \
+    python3 -m piper.download_voices --data-dir /app en_US-lessac-medium && \
+    python3 -m piper.download_voices --data-dir /app ml_IN-meera-medium && \
+    python3 -m piper.download_voices --data-dir /app te_IN-padmavathi-medium
+
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:5000/health || exit 1
+
+CMD ["/app/runpod_start.sh"]
