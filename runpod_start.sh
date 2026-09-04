@@ -41,6 +41,10 @@ pip uninstall -y onnxruntime onnxruntime-gpu 2>/dev/null || true
 pip install -r requirements-prod.txt --no-cache-dir
 
 if [ "${USE_CUDA}" = "true" ]; then
+    # Ensure cuDNN 9 runtime library is available for onnxruntime-gpu
+    pip install --no-cache-dir 'nvidia-cudnn-cu12>=9'
+    echo "/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib" > /etc/ld.so.conf.d/nvidia_cudnn.conf 2>/dev/null || true
+    ldconfig 2>/dev/null || true
     # Install piper-tts without pulling CPU onnxruntime
     pip install --no-deps piper-tts --no-cache-dir
 else
