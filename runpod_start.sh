@@ -34,13 +34,23 @@ else
 fi
 
 echo "=== [3/5] Installing Production Dependencies ==="
+# Remove any pre-existing onnxruntime packages to ensure clean installation
+pip uninstall -y onnxruntime onnxruntime-gpu 2>/dev/null || true
+
+# Install production dependencies (including onnxruntime-gpu and pathvalidate)
 pip install -r requirements-prod.txt --no-cache-dir
 
 if [ "${USE_CUDA}" = "true" ]; then
-    # Ensure onnxruntime-gpu is present and not shadowed by CPU onnxruntime
-    pip uninstall -y onnxruntime || true
-    pip install onnxruntime-gpu --no-cache-dir
+    # Install piper-tts without pulling CPU onnxruntime
+    pip install --no-deps piper-tts --no-cache-dir
+else
+    pip uninstall -y onnxruntime-gpu 2>/dev/null || true
+    pip install onnxruntime --no-cache-dir
+    pip install --no-deps piper-tts --no-cache-dir
 fi
+
+# Sanity check
+python3 -c "import onnxruntime; print('✓ ONNX Runtime verified. Available providers:', onnxruntime.get_available_providers())"
 
 echo "=== [4/5] Downloading Voice Models (if not already present) ==="
 IFS=',' read -ra MODELS_ARRAY <<< "${VOICE_MODELS}"
