@@ -37,7 +37,8 @@ echo "=== [3/5] Installing Production Dependencies ==="
 pip install -r requirements-prod.txt --no-cache-dir
 
 if [ "${USE_CUDA}" = "true" ]; then
-    # Ensure onnxruntime-gpu is present
+    # Ensure onnxruntime-gpu is present and not shadowed by CPU onnxruntime
+    pip uninstall -y onnxruntime || true
     pip install onnxruntime-gpu --no-cache-dir
 fi
 
